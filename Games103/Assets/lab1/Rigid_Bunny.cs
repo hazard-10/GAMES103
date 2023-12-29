@@ -85,6 +85,25 @@ public class Rigid_Bunny : MonoBehaviour
 		}
 
 		// Part I: Update velocities
+		if (launched) 
+		{
+			Vector3 v_mid = v + 0.5f * dt * (new Vector3 (0, -9.8f, 0));
+			Vector4 ang_acc = I_ref.inverse * Get_Cross_Matrix (w) * I_ref * w;
+			Vector3 w_mid = w + 0.5f * dt * (new Vector3 (ang_acc.x, ang_acc.y, ang_acc.z));
+
+			Vector3 pos_new = transform.position + dt * v_mid;
+			Quaternion rot_new = transform.rotation * Quaternion.Euler (dt * w_mid);
+			
+			v = v_mid + 0.5f * dt * (new Vector3 (0, -9.8f, 0));
+			ang_acc = I_ref.inverse * Get_Cross_Matrix (w_mid) * I_ref * w_mid;
+			w = w_mid + 0.5f * dt * (new Vector3 (ang_acc.x, ang_acc.y, ang_acc.z));
+			// add decay 
+			v = v * linear_decay;
+			w = w * angular_decay;
+
+			transform.position = pos_new;
+			transform.rotation = rot_new;
+		}
 
 
 		// Part II: Collision Impulse

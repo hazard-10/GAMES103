@@ -12,9 +12,10 @@ public class Rigid_Bunny : MonoBehaviour
 	float mass;									// mass
 	Matrix4x4 I_ref;							// reference inertia
 
-	float linear_decay	= 0.999f;				// for velocity decay
-	float angular_decay	= 0.98f;				
-	float restitution 	= 0.5f;					// for collision
+	float linear_decay	= 0.98f;				// for velocity decay
+	float angular_decay	= 0.95f;				
+	float mu_N 	= 0.5f;					// for normal restitution
+	float mu_T 	= 0.5f;					// for tangential restitution
 
 	Vector3[] vertices;
 
@@ -77,10 +78,9 @@ public class Rigid_Bunny : MonoBehaviour
 		for (int i=0; i<vertices.Length; i++){
 			Vector3 Rr_i = R.MultiplyPoint3x4(vertices[i]);
 			Vector3 x_i = transform.position + Rr_i;
-			if (Vector3.Dot(x_i - P, N) < 0){ // if the vertex is below the plane
-				// check if the vert velocity is going into the plane
+			if (Vector3.Dot(x_i - P, N) < 0){ // if the vertex is below the plane				
 				Vector3 v_i = v + Vector3.Cross(w, Rr_i);
-				if (Vector3.Dot(v_i, N) < 0){
+				if (Vector3.Dot(v_i, N) < 0){ // check if the vert velocity is going into the plane
 					avg_r += vertices[i];
 					num_collision_points += 1;
 				}
@@ -92,18 +92,19 @@ public class Rigid_Bunny : MonoBehaviour
 		avg_r /= num_collision_points; // in local space
 
 		// compute the wanted v_rebound_new
-		Vector3 global_collision_point = transform.position + R.MultiplyPoint3x4(avg_r);
-		Vector3 v_avg = v + Vector3.Cross(w, transform.rotation * avg_r);
+		Vector3 Rr_avg = R.MultiplyPoint3x4(avg_r);
+		Vector3 global_collision_point = transform.position + Rr_avg;
+		Vector3 v_avg = v + Vector3.Cross(w, Rr_avg);
 
 		Vector3 v_avg_N = Vector3.Dot(v_avg, N) * N;
 		Vector3 v_avg_T = v_avg - v_avg_N;
-		Vector3 v_new_N = -restitution * v_avg_N;
-		float alpha = Math.Max(0, 1 - restitution *(1 + restitution) * v_avg_N.magnitude / v_avg_T.magnitude);
+		Vector3 v_new_N = -mu_N * v_avg_N;
+		float alpha = Math.Max(0, 1 - mu_T *(1 + mu_N) * v_avg_N.magnitude / v_avg_T.magnitude);
 		Vector3 v_new_T = alpha * v_avg_T;
 		Vector3 v_new = v_new_N + v_new_T;
 
 		// compute the impulse J
-		Matrix4x4 Rr_star = Get_Cross_Matrix(R.MultiplyPoint3x4(avg_r));
+		Matrix4x4 Rr_star = Get_Cross_Matrix(Rr_avg);
 		Matrix4x4 I = R * I_ref * R.transpose;
 		Matrix4x4 I_inv = I.inverse;
 
@@ -123,8 +124,13 @@ public class Rigid_Bunny : MonoBehaviour
 
 		// update v and w
 		v += J / mass;
-		Vector4 w_delta = I_inv * Rr_star * J;
-		w += new Vector3(w_delta.x, w_delta.y, w_delta.z);
+		w += I_inv.MultiplyVector(Vector3.Cross(Rr_avg, J));
+
+		// decay restitution
+		mu_N *= 0.9f;
+		if (v.magnitude < 0.1f || w.magnitude < 0.1f){
+			mu_N = 0;
+		}
 	}
 
 	// Update is called once per frame
@@ -134,36 +140,34 @@ public class Rigid_Bunny : MonoBehaviour
 		if(Input.GetKey("r"))
 		{
 			transform.position = new Vector3 (0, 0.6f, 0);
-			restitution = 0.5f;
+			mu_N = 0.5f;
 			launched=false;
 		}
 		if(Input.GetKey("l"))
 		{
 			v = new Vector3 (5, 2, 0);
-			w = new Vector3 (20f, 10f, 10f);
 			launched=true;
 		}
 
+		if(!launched)
+			return;
+
 		// Part I: Update velocities
-		if (launched) 
-		{
-			Vector3 v_mid = v + 0.5f * dt * (new Vector3 (0, -9.8f, 0));
-			// Vector4 ang_acc = I_ref.inverse * Get_Cross_Matrix (w) * I_ref * w;
-			// Vector3 w_mid = w + 0.5f * dt * (new Vector3 (ang_acc.x, ang_acc.y, ang_acc.z));
+		v = v + dt * (new Vector3 (0, -9.8f, 0));
 
-			Vector3 pos_new = transform.position + dt * v_mid;
-			Quaternion rot_new = transform.rotation * Quaternion.Euler (dt * w);
-			
-			v = v_mid + 0.5f * dt * (new Vector3 (0, -9.8f, 0));
-			// ang_acc = I_ref.inverse * Get_Cross_Matrix (w_mid) * I_ref * w_mid;
-			// w = w_mid + 0.5f * dt * (new Vector3 (ang_acc.x, ang_acc.y, ang_acc.z));
-			// add decay 
-			v = v * linear_decay;
-			w = w * angular_decay;
+		v = v * linear_decay;
+		w = w * angular_decay;
 
-			transform.position = pos_new;
-			transform.rotation = rot_new;
+		if (v.magnitude < 0.04f){
+			v = new Vector3(0, 0, 0);
 		}
+		if (w.magnitude < 0.04f){
+			w = new Vector3(0, 0, 0);
+		}
+		
+		// update rotation
+		Vector3 rotationDelta = w * dt * 0.5f;
+		Quaternion quaternionDelta = new Quaternion(rotationDelta.x, rotationDelta.y, rotationDelta.z, 0) * transform.rotation;
 
 
 		// Part II: Collision Impulse
@@ -172,12 +176,13 @@ public class Rigid_Bunny : MonoBehaviour
 
 		// Part III: Update position & orientation
 		//Update linear status
-		Vector3 x    = transform.position;
+		Vector3 pos_new = transform.position + dt * v;
 		//Update angular status
-		Quaternion q = transform.rotation;
+		Quaternion rot_new = new Quaternion(quaternionDelta.x + transform.rotation.x, quaternionDelta.y + transform.rotation.y, quaternionDelta.z + transform.rotation.z, quaternionDelta.w + transform.rotation.w);
+		rot_new.Normalize();
 
 		// Part IV: Assign to the object
-		transform.position = x;
-		transform.rotation = q;
+		transform.position = pos_new;
+		transform.rotation = rot_new;
 	}
 }

@@ -143,9 +143,33 @@ public class implicit_model : MonoBehaviour
 	void Get_Gradient(Vector3[] X, Vector3[] X_hat, float t, Vector3[] G)
 	{
 		//Momentum and Gravity.
-		
+		Vector3 gravity = new Vector3(0, -9.8f, 0);
+		// prepare the mass matrix
+		Matrix4x4 M = Matrix4x4.identity;
+		M [0, 0] *= mass;
+		M [1, 1] *= mass;
+		M [2, 2] *= mass;
+		M [3, 3] = 1; 
+
+		for (int i=0; i<X.Length; i++) 
+		{
+			// update gradient with 1 / (t^2) * M * (X - X_hat), with ravitation
+			G[i] = (X[i] - X_hat[i]) * mass / (t * t) - gravity * mass;
+		}
+
 		//Spring Force.
-		
+		// for each edge, compute the spring force, and add it to the gradient as
+		// k *(1 - Le / ||xi - xj|| ) * (xi - xj)
+		for (int e=0; e<E.Length/2; e++) 
+		{
+			int v0 = E[e*2+0];
+			int v1 = E[e*2+1];
+			Vector3 d = X[v0] - X[v1];
+			float l = d.magnitude;
+			d.Normalize();
+			G[v0] += spring_k * (1 - L[e] / l) *d;
+			G[v1] -= spring_k * (1 - L[e] / l) *d;
+		}
 	}
 
     // Update is called once per frame

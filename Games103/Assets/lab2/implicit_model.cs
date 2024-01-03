@@ -158,6 +158,11 @@ public class implicit_model : MonoBehaviour
 		Vector3[] G 		= new Vector3[X.Length];
 
 		//Initial Setup.
+		for (int i=0; i<X.Length; i++) 
+		{
+			last_X [i] = X [i];
+			X_hat [i] = X [i] + t * V [i];
+		}
 
 		for(int k=0; k<32; k++)
 		{

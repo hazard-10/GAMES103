@@ -13,6 +13,8 @@ public class implicit_model : MonoBehaviour
 	float[] 	L;
 	Vector3[] 	V;
 
+	public GameObject sphere;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -135,7 +137,18 @@ public class implicit_model : MonoBehaviour
 		Mesh mesh = GetComponent<MeshFilter> ().mesh;
 		Vector3[] X = mesh.vertices;
 		
-		//Handle colllision.
+		//Handle colllision
+		float radius = 2.7f;
+		Vector3 c = sphere.transform.position;
+		for (int i = 0; i < X.Length; i++)
+		{
+			float dis = (X[i] - c).magnitude;
+			if (dis < radius)
+			{
+				V[i] += 1 / t * (c + radius * (X[i] - c) / (X[i] - c).magnitude - X[i]);
+				X[i] = c + radius * (X[i] - c) / (X[i] - c).magnitude;
+			}
+		}
 
 		mesh.vertices = X;
 	}
@@ -189,7 +202,7 @@ public class implicit_model : MonoBehaviour
 			X_hat [i] = X [i] + t * V [i];
 			X [i] = X_hat [i];
 		}
-		float w = 0.0f;
+		float w = 1.0f;
 		for(int k=0; k<32; k++)
 		{
 			Get_Gradient(X, X_hat, t, G);
@@ -203,19 +216,20 @@ public class implicit_model : MonoBehaviour
 				w = 4.0f / (4 - rho * rho * w);
 			
 			//Update X by gradient.
-			for (int i=0; i<X.Length; i++) 
+			for (int i=1; i<X.Length; i++) 
 			{
-				Vector3 last_Xi = X[i];
-				X[i] = X[i] -  G[i] / ( mass / (t * t) + 4 * k);
-				X[i] = w * X[i] + (1 - w) * last_X[i];
-				last_X[i] = last_Xi;
+				if (i == 20) continue;
+				Vector3 oldXi = X[i];
+				X[i] = w * (X[i] -  G[i] / ( mass / (t * t) + 4 * spring_k)) + (1 - w) * last_X[i];
+				last_X[i] = oldXi;
 			}
 		}
 
 		//Finishing.
-		for (int i=0; i<X.Length; i++) 
+		for (int i=1; i<X.Length; i++) 
 		{
-			V[i] = V[i] + (X[i] - X_hat[i]) / t ;
+			if (i == 20) continue;
+			V[i] += (X[i] - X_hat[i]) / t ;
 		}
 		
 		mesh.vertices = X;

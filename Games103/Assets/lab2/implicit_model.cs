@@ -167,7 +167,7 @@ public class implicit_model : MonoBehaviour
 		for (int i=0; i<X.Length; i++) 
 		{
 			// update gradient with 1 / (t^2) * M * (X - X_hat), with gravity
-			G[i] = M.MultiplyVector ((X[i] - X_hat[i])  / (t * t)) - M.MultiplyVector(gravity);
+			G[i] = mass * ((X[i] - X_hat[i])  / (t * t)) - mass * gravity;
 		}
 
 		//Spring Force.
@@ -179,7 +179,6 @@ public class implicit_model : MonoBehaviour
 			int v1 = E[e*2+1];
 			Vector3 d = X[v0] - X[v1];
 			float l = d.magnitude;
-			d.Normalize();
 			Vector3 spring_force = spring_k * (1 - L[e] / l) *d;
 			G[v0] += spring_force;
 			G[v1] -= spring_force;

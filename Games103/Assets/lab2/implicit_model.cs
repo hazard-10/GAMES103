@@ -149,16 +149,16 @@ public class implicit_model : MonoBehaviour
 		M [0, 0] *= mass;
 		M [1, 1] *= mass;
 		M [2, 2] *= mass;
-		M [3, 3] = 1; 
+		M [3, 3] *= mass;
 
 		for (int i=0; i<X.Length; i++) 
 		{
-			// update gradient with 1 / (t^2) * M * (X - X_hat), with ravitation
-			G[i] = (X[i] - X_hat[i]) * mass / (t * t) - gravity * mass;
+			// update gradient with 1 / (t^2) * M * (X - X_hat), with gravity
+			G[i] = M.MultiplyVector ((X[i] - X_hat[i])  / (t * t)) - M.MultiplyVector(gravity);
 		}
 
 		//Spring Force.
-		// for each edge, compute the spring force, and add it to the gradient as
+		// for each edge, compute the spring force, and add it to the gradient asi
 		// k *(1 - Le / ||xi - xj|| ) * (xi - xj)
 		for (int e=0; e<E.Length/2; e++) 
 		{
@@ -167,8 +167,9 @@ public class implicit_model : MonoBehaviour
 			Vector3 d = X[v0] - X[v1];
 			float l = d.magnitude;
 			d.Normalize();
-			G[v0] += spring_k * (1 - L[e] / l) *d;
-			G[v1] -= spring_k * (1 - L[e] / l) *d;
+			Vector3 spring_force = spring_k * (1 - L[e] / l) *d;
+			G[v0] += spring_force;
+			G[v1] -= spring_force;
 		}
 	}
 
@@ -184,19 +185,38 @@ public class implicit_model : MonoBehaviour
 		//Initial Setup.
 		for (int i=0; i<X.Length; i++) 
 		{
-			last_X [i] = X [i];
+			V[i] *= damping;
 			X_hat [i] = X [i] + t * V [i];
+			X [i] = X_hat [i];
 		}
-
+		float w = 0.0f;
 		for(int k=0; k<32; k++)
 		{
 			Get_Gradient(X, X_hat, t, G);
+
+			// compute Chebyshev's parameter
+			if (k == 0)
+				w = 1.0f;
+			else if (k == 1)
+				w = 2.0f / ( 2 - rho * rho);
+			else
+				w = 4.0f / (4 - rho * rho * w);
 			
 			//Update X by gradient.
-			
+			for (int i=0; i<X.Length; i++) 
+			{
+				Vector3 last_Xi = X[i];
+				X[i] = X[i] -  G[i] / ( mass / (t * t) + 4 * k);
+				X[i] = w * X[i] + (1 - w) * last_X[i];
+				last_X[i] = last_Xi;
+			}
 		}
 
 		//Finishing.
+		for (int i=0; i<X.Length; i++) 
+		{
+			V[i] = V[i] + (X[i] - X_hat[i]) / t ;
+		}
 		
 		mesh.vertices = X;
 

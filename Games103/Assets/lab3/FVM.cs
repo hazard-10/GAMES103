@@ -34,7 +34,7 @@ public class FVM : MonoBehaviour
     	// FILO IO: Read the house model from files.
     	// The model is from Jonathan Schewchuk's Stellar lib.
     	{
-    		string fileContent = File.ReadAllText("Assets/house2.ele");
+    		string fileContent = File.ReadAllText("Assets/lab3/house2.ele");
     		string[] Strings = fileContent.Split(new char[]{' ', '\t', '\r', '\n'}, StringSplitOptions.RemoveEmptyEntries);
     		
     		tet_number=int.Parse(Strings[0]);
@@ -49,7 +49,7 @@ public class FVM : MonoBehaviour
 			}
     	}
     	{
-			string fileContent = File.ReadAllText("Assets/house2.node");
+			string fileContent = File.ReadAllText("Assets/lab3/house2.node");
     		string[] Strings = fileContent.Split(new char[]{' ', '\t', '\r', '\n'}, StringSplitOptions.RemoveEmptyEntries);
     		number = int.Parse(Strings[0]);
     		X = new Vector3[number];
@@ -142,6 +142,8 @@ public class FVM : MonoBehaviour
 
     void _Update()
     {
+		// define some constants
+		Vector3 gravity = new Vector3(0, -9.8f, 0);
     	// Jump up.
 		if(Input.GetKeyDown(KeyCode.Space))
     	{
@@ -152,6 +154,9 @@ public class FVM : MonoBehaviour
     	for(int i=0 ;i<number; i++)
     	{
     		//TODO: Add gravity to Force.
+			Force[i]+=gravity*mass;
+			// TODO: Add damping force to Force.
+			Force[i]-=V[i]*damp;
     	}
 
     	for(int tet=0; tet<tet_number; tet++)

@@ -187,6 +187,13 @@ public class FVM : MonoBehaviour
 
     	for(int tet=0; tet<tet_number; tet++)
     	{
+			int x0 = Tet[tet*4+0];
+			int x1 = Tet[tet*4+1];
+			int x2 = Tet[tet*4+2];
+			int x3 = Tet[tet*4+3];
+			Vector3 e1 = X[x1]-X[x0];
+			Vector3 e2 = X[x2]-X[x0];
+			Vector3 e3 = X[x3]-X[x0];
     		//TODO: Deformation Gradient
 			Matrix4x4 F = Matrix4x4.zero;
 			//    build current edge matrix
@@ -198,15 +205,40 @@ public class FVM : MonoBehaviour
 
     		//TODO: Second PK Stress
 
+			Matrix4x4 Green = Matrix4x4.zero;
+			Green = F.transpose*F;
+			Matrix4x4 I = Matrix4x4.identity;
+			for(int i=0; i<4; i++){
+				for(int j=0; j<4; j++){
+					Green[i, j] -= I[i, j];
+					Green[i, j] *= 0.5f;
+				}
+			}
+			//TODO: Second PK Stress
+			Matrix4x4 S = Matrix4x4.zero;
+			S = 2 * stiffness_1 * Green + stiffness_0 * Green.trace() * Matrix4x4.identity;
     		//TODO: Elastic Force
-			
+			float volume = Mathf.Abs(Vector3.Dot(e1, Vector3.Cross(e2, e3))) / 6.0f;
+			Matrix4x4 vol_ref_FS = volume * F * S;
+			Vector3 f1 = vol_ref_FS.MultiplyPoint3x4(e1);
+			Vector3 f2 = vol_ref_FS.MultiplyPoint3x4(e2);
+			Vector3 f3 = vol_ref_FS.MultiplyPoint3x4(e3);
+			Vector3 f0 = -(f1+f2+f3);
+			Force[x0] += f0;
+			Force[x1] += f1;
+			Force[x2] += f2;
+			Force[x3] += f3;
     	}
 
     	for(int i=0; i<number; i++)
     	{
     		//TODO: Update X and V here.
-
+			Vector3 a = Force[i] / mass;
+			V[i] += a * dt;
+			X[i] += V[i] * dt;
+			Force[i] = Vector3.zero;
     		//TODO: (Particle) collision with floor.
+
     	}
     }
 

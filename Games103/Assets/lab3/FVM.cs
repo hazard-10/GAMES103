@@ -176,6 +176,17 @@ public class FVM : MonoBehaviour
 		return ret;
 	}
 
+	// mattrix add
+	Matrix4x4 Matrix_Add(Matrix4x4 A, Matrix4x4 B){
+		Matrix4x4 ret = Matrix4x4.zero;
+		for(int i=0; i<4; i++){
+			for(int j=0; j<4; j++){
+				ret[i, j] = A[i, j] + B[i, j];
+			}
+		}
+		return ret;
+	}
+
 	// matrix trace
 	float Matrix_Trace(Matrix4x4 A){
 		float ret = 0;
@@ -236,10 +247,11 @@ public class FVM : MonoBehaviour
 			}
 			//TODO: Second PK Stress
 			Matrix4x4 S = Matrix4x4.zero;
-			S = 2 * stiffness_1 * Green + stiffness_0 * Green.trace() * Matrix4x4.identity;
+
+			S = Matrix_Add( Matrix_Float_Multiply(Green, 2 * stiffness_1), Matrix_Float_Multiply(Matrix4x4.identity, stiffness_0 * Matrix_Trace(Green)));
     		//TODO: Elastic Force
 			float volume = Mathf.Abs(Vector3.Dot(e1, Vector3.Cross(e2, e3))) / 6.0f;
-			Matrix4x4 vol_ref_FS = volume * F * S;
+			Matrix4x4 vol_ref_FS = Matrix_Float_Multiply(F*S, volume);
 			Vector3 f1 = vol_ref_FS.MultiplyPoint3x4(e1);
 			Vector3 f2 = vol_ref_FS.MultiplyPoint3x4(e2);
 			Vector3 f3 = vol_ref_FS.MultiplyPoint3x4(e3);

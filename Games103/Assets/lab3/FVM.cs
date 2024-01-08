@@ -165,6 +165,26 @@ public class FVM : MonoBehaviour
 		return ret;
     }
 
+	// matrix float multiplication
+	Matrix4x4 Matrix_Float_Multiply(Matrix4x4 A, float b){
+		Matrix4x4 ret = Matrix4x4.zero;
+		for(int i=0; i<4; i++){
+			for(int j=0; j<4; j++){
+				ret[i, j] = A[i, j] * b;
+			}
+		}
+		return ret;
+	}
+
+	// matrix trace
+	float Matrix_Trace(Matrix4x4 A){
+		float ret = 0;
+		for(int i=0; i<4; i++){
+			ret += A[i, i];
+		}
+		return ret;
+	}
+
 
     void _Update()
     {

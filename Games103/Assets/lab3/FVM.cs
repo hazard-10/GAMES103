@@ -28,6 +28,9 @@ public class FVM : MonoBehaviour
 
 	SVD svd = new SVD();
 
+	// add some custom parameters
+	Vector3 prev_X;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -129,12 +132,35 @@ public class FVM : MonoBehaviour
         V_num = new int[number];
 
 		//TODO: Need to allocate and assign inv_Dm
+		for(int t=0; t<tet_number; t++){
+			Matrix4x4 Dm = Build_Dm(t);
+			Matrix4x4 dm_inv = Dm.inverse;
+			inv_Dm[t] = dm_inv;
+		}
     }
 
     Matrix4x4 Build_Edge_Matrix(int tet)
     {
     	Matrix4x4 ret=Matrix4x4.zero;
     	//TODO: Need to build edge matrix here.
+		// will represent the edge as x0-x1, x0-x2, x0-x3,
+		int x0 = Tet[tet*4+0];
+		int x1 = Tet[tet*4+1];
+		int x2 = Tet[tet*4+2];
+		int x3 = Tet[tet*4+3];
+		Vector3 e1 = X[x1]-X[x0];
+		Vector3 e2 = X[x2]-X[x0];
+		Vector3 e3 = X[x3]-X[x0];
+		ret.SetColumn(0, new Vector4(e1.x, e1.y, e1.z, 0));
+		ret.SetColumn(1, new Vector4(e2.x, e2.y, e2.z, 0));
+		ret.SetColumn(2, new Vector4(e3.x, e3.y, e3.z, 0));
+		ret.SetColumn(3, new Vector4(0, 0, 0, 1));
+		return ret;
+	}
+
+	Matrix4x4 Build_Dm(int tet)
+	{
+		Matrix4x4 ret=Matrix4x4.zero;
 
 		return ret;
     }
@@ -162,6 +188,11 @@ public class FVM : MonoBehaviour
     	for(int tet=0; tet<tet_number; tet++)
     	{
     		//TODO: Deformation Gradient
+			Matrix4x4 F = Matrix4x4.zero;
+			//    build current edge matrix
+			Matrix4x4 E = Build_Edge_Matrix(tet);
+			//    compute F
+			F = E*inv_Dm[tet];
     		
     		//TODO: Green Strain
 

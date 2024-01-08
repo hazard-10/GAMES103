@@ -133,9 +133,7 @@ public class FVM : MonoBehaviour
 
 		//TODO: Need to allocate and assign inv_Dm
 		for(int t=0; t<tet_number; t++){
-			Matrix4x4 Dm = Build_Dm(t);
-			Matrix4x4 dm_inv = Dm.inverse;
-			inv_Dm[t] = dm_inv;
+			inv_Dm[t] = Build_Edge_Matrix(t).inverse;
 		}
     }
 
@@ -143,7 +141,6 @@ public class FVM : MonoBehaviour
     {
     	Matrix4x4 ret=Matrix4x4.zero;
     	//TODO: Need to build edge matrix here.
-		// will represent the edge as x0-x1, x0-x2, x0-x3,
 		int x0 = Tet[tet*4+0];
 		int x1 = Tet[tet*4+1];
 		int x2 = Tet[tet*4+2];
@@ -160,9 +157,7 @@ public class FVM : MonoBehaviour
 
 	Matrix4x4 Build_Dm(int tet)
 	{
-		Matrix4x4 ret=Matrix4x4.zero;
-
-		return ret;
+		return Build_Edge_Matrix(tet).inverse;
     }
 
 	// matrix float multiplication
@@ -230,11 +225,9 @@ public class FVM : MonoBehaviour
 			//    build current edge matrix
 			Matrix4x4 E = Build_Edge_Matrix(tet);
 			//    compute F
-			F = E*inv_Dm[tet];
+			// F = E*inv_Dm[tet];
     		
     		//TODO: Green Strain
-
-    		//TODO: Second PK Stress
 
 			Matrix4x4 Green = Matrix4x4.zero;
 			Green = F.transpose*F;

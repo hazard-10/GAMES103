@@ -209,7 +209,7 @@ public class FVM : MonoBehaviour
     		//TODO: Add gravity to Force.
 			Force[i]+=gravity*mass;
 			// TODO: Add damping force to Force.
-			Force[i]-=V[i]*damp;
+			V[i] *= damp;
     	}
 
     	for(int tet=0; tet<tet_number; tet++)
@@ -223,16 +223,16 @@ public class FVM : MonoBehaviour
 			Vector3 e3 = X[x3]-X[x0];
     		//TODO: Deformation Gradient
 			Matrix4x4 F = Matrix4x4.zero;
-			//    build current edge matrix
+				//  build current edge matrix
 			Matrix4x4 E = Build_Edge_Matrix(tet);
-			//    compute F
-			// F = E*inv_Dm[tet];
+				//  compute F
+			F = E*inv_Dm[tet];
     		
-    		//TODO: Green Strain
-
+    		//TODO: Green Strain = 0.5*(F^T*F-I)
 			Matrix4x4 Green = Matrix4x4.zero;
 			Green = F.transpose*F;
 			Matrix4x4 I = Matrix4x4.identity;
+				// compute Green Strain
 			for(int i=0; i<4; i++){
 				for(int j=0; j<4; j++){
 					Green[i, j] -= I[i, j];
@@ -241,7 +241,6 @@ public class FVM : MonoBehaviour
 			}
 			//TODO: Second PK Stress
 			Matrix4x4 S = Matrix4x4.zero;
-
 			S = Matrix_Add( Matrix_Float_Multiply(Green, 2 * stiffness_1), Matrix_Float_Multiply(Matrix4x4.identity, stiffness_0 * Matrix_Trace(Green)));
     		//TODO: Elastic Force
 			float volume = Mathf.Abs(Vector3.Dot(e1, Vector3.Cross(e2, e3))) / 6.0f;
@@ -259,9 +258,13 @@ public class FVM : MonoBehaviour
     	for(int i=0; i<number; i++)
     	{
     		//TODO: Update X and V here.
+
+			// laplacian smoothing, storing the neighbors in a set, and then smoothing with the avg Force
 			Vector3 a = Force[i] / mass;
 			V[i] += a * dt;
 			X[i] += V[i] * dt;
+
+			// after updating X, we need to update the inv_Dm
 			Force[i] = Vector3.zero;
     		//TODO: (Particle) collision with floor.
 			if(X[i].y < -3){ // floor

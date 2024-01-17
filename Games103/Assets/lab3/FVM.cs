@@ -20,9 +20,9 @@ public class FVM : MonoBehaviour
 	Vector3[] 	X;
 	int number;				//The number of vertices
 
-	Matrix4x4[] inv_Dm;
-	Matrix4x4[] original_Dm;	
+	Matrix4x4[] inv_Dm; 
 	Matrix4x4[] inv_T_Dm;
+	float[] neg_volume;
 
 	//For Laplacian smoothing.
 	Vector3[]   V_sum;
@@ -134,13 +134,14 @@ public class FVM : MonoBehaviour
         V_num = new int[number];
 
 		//TODO: Need to allocate and assign inv_Dm
-		inv_Dm = new Matrix4x4[tet_number];
-		original_Dm = new Matrix4x4[tet_number];
+		inv_Dm = new Matrix4x4[tet_number]; 
 		inv_T_Dm = new Matrix4x4[tet_number];
+		neg_volume = new float[tet_number];
 		for(int t=0; t<tet_number; t++){
-			Matrix4x4 m = Build_Edge_Matrix(t);
-			original_Dm[t] = m;
+			Matrix4x4 m = Build_Edge_Matrix(t); 
 			inv_Dm[t] = m.inverse;
+			neg_volume[t] = Mathf.Abs(m.determinant);
+			neg_volume[t] = -1 / 6 * neg_volume[t];
 			Matrix4x4 mT = m.transpose;
 			inv_T_Dm[t] = mT.inverse;
 		}
@@ -226,9 +227,6 @@ public class FVM : MonoBehaviour
 			int x1 = Tet[tet*4+1];
 			int x2 = Tet[tet*4+2];
 			int x3 = Tet[tet*4+3];
-			Vector3 e1 = X[x1]-X[x0];
-			Vector3 e2 = X[x2]-X[x0];
-			Vector3 e3 = X[x3]-X[x0];
     		//TODO: Deformation Gradient
 			Matrix4x4 F = Matrix4x4.zero;
 				//  build current edge matrix
@@ -250,14 +248,14 @@ public class FVM : MonoBehaviour
 			//TODO: Second PK Stress
 			Matrix4x4 S = Matrix4x4.zero;
 			S = Matrix_Add( Matrix_Float_Multiply(Green, 2 * stiffness_1), Matrix_Float_Multiply(Matrix4x4.identity, stiffness_0 * Matrix_Trace(Green)));
-    		// first PK stress
+    			// first PK stress
 			Matrix4x4 P = F * S;
 			//TODO: Elastic Force
-			float volume = Mathf.Abs(Vector3.Dot(e1, Vector3.Cross(e2, e3))) / 6.0f;
-			Matrix4x4 vol_ref_FS = Matrix_Float_Multiply(F*S, volume);
-			Vector3 f1 = vol_ref_FS.MultiplyPoint3x4(e1);
-			Vector3 f2 = vol_ref_FS.MultiplyPoint3x4(e2);
-			Vector3 f3 = vol_ref_FS.MultiplyPoint3x4(e3);
+			Matrix4x4 forces = Matrix_Float_Multiply( P*inv_T_Dm[tet], neg_volume[tet] );
+				// assign column to Force
+			Vector3 f1 = new Vector3(forces[0, 0], forces[1, 0], forces[2, 0]);
+			Vector3 f2 = new Vector3(forces[0, 1], forces[1, 1], forces[2, 1]);
+			Vector3 f3 = new Vector3(forces[0, 2], forces[1, 2], forces[2, 2]);
 			Vector3 f0 = -(f1+f2+f3);
 			Force[x0] += f0;
 			Force[x1] += f1;
@@ -268,8 +266,7 @@ public class FVM : MonoBehaviour
     	for(int i=0; i<number; i++)
     	{
     		//TODO: Update X and V here.
-
-			// laplacian smoothing, storing the neighbors in a set, and then smoothing with the avg Force
+				// laplacian smoothing, storing the neighbors in a set, and then smoothing with the avg Force
 			Vector3 a = Force[i] / mass;
 			V[i] += a * dt;
 			X[i] += V[i] * dt;

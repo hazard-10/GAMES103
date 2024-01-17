@@ -132,8 +132,9 @@ public class FVM : MonoBehaviour
         V_num = new int[number];
 
 		//TODO: Need to allocate and assign inv_Dm
+		inv_Dm = new Matrix4x4[tet_number];
 		for(int t=0; t<tet_number; t++){
-			inv_Dm[t] = Build_Edge_Matrix(t).inverse;
+			inv_Dm[t] = Build_Dm(t);
 		}
     }
 
@@ -263,7 +264,10 @@ public class FVM : MonoBehaviour
 			X[i] += V[i] * dt;
 			Force[i] = Vector3.zero;
     		//TODO: (Particle) collision with floor.
-
+			if(X[i].y < -3){ // floor
+				// add collision force
+				Force[i] += new Vector3(0, 200, 0);
+			}
     	}
     }
 

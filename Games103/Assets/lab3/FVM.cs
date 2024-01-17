@@ -141,7 +141,7 @@ public class FVM : MonoBehaviour
 			Matrix4x4 m = Build_Edge_Matrix(t); 
 			inv_Dm[t] = m.inverse;
 			neg_volume[t] = Mathf.Abs(m.determinant);
-			neg_volume[t] = -1 / 6 * neg_volume[t];
+			neg_volume[t] = -1.0f / 6 * neg_volume[t]; 
 			Matrix4x4 mT = m.transpose;
 			inv_T_Dm[t] = mT.inverse;
 		}
@@ -217,8 +217,6 @@ public class FVM : MonoBehaviour
     	{
     		//TODO: Add gravity to Force.
 			Force[i]+=gravity*mass;
-			// TODO: Add damping force to Force.
-			V[i] *= damp;
     	}
 
     	for(int tet=0; tet<tet_number; tet++)
@@ -269,15 +267,25 @@ public class FVM : MonoBehaviour
 				// laplacian smoothing, storing the neighbors in a set, and then smoothing with the avg Force
 			Vector3 a = Force[i] / mass;
 			V[i] += a * dt;
+			V[i] *= damp;
 			X[i] += V[i] * dt;
 
 			// after updating X, we need to update the inv_Dm
 			Force[i] = Vector3.zero;
     		//TODO: (Particle) collision with floor.
-			if(X[i].y < -3){ // floor
-				// add collision force
-				Force[i] += new Vector3(0, 200, 0);
-			}
+			float muN = 0.5f;
+			float muT = 0.3f;
+			Vector3 floorPos = new Vector3(0, -3, 0);
+			Vector3 floorNormal = new Vector3(0, 1, 0);
+            float signedDis = Vector3.Dot(X[i] - floorPos, floorNormal);
+            if (signedDis < 0 && Vector3.Dot(V[i], floorNormal) < 0)
+            {
+	            X[i] -= signedDis * floorNormal;
+	            Vector3 vN = Vector3.Dot(V[i], floorNormal) * floorNormal;
+	            Vector3 vT = V[i] - vN;
+	            float tmp = Math.Max(1 - muT * (1 + muN) * vN.magnitude / vT.magnitude, 0);
+	            V[i] = -muN * vN + tmp * vT;
+            }
     	}
     }
 

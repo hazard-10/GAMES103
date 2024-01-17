@@ -21,6 +21,8 @@ public class FVM : MonoBehaviour
 	int number;				//The number of vertices
 
 	Matrix4x4[] inv_Dm;
+	Matrix4x4[] original_Dm;	
+	Matrix4x4[] inv_T_Dm;
 
 	//For Laplacian smoothing.
 	Vector3[]   V_sum;
@@ -133,15 +135,21 @@ public class FVM : MonoBehaviour
 
 		//TODO: Need to allocate and assign inv_Dm
 		inv_Dm = new Matrix4x4[tet_number];
+		original_Dm = new Matrix4x4[tet_number];
+		inv_T_Dm = new Matrix4x4[tet_number];
 		for(int t=0; t<tet_number; t++){
-			inv_Dm[t] = Build_Dm(t);
+			Matrix4x4 m = Build_Edge_Matrix(t);
+			original_Dm[t] = m;
+			inv_Dm[t] = m.inverse;
+			Matrix4x4 mT = m.transpose;
+			inv_T_Dm[t] = mT.inverse;
 		}
     }
 
     Matrix4x4 Build_Edge_Matrix(int tet)
     {
     	Matrix4x4 ret=Matrix4x4.zero;
-    	//TODO: Need to build edge matrix here.
+    	//TODO: Need to build edge matrix here, ret = [e10, e20, e30]
 		int x0 = Tet[tet*4+0];
 		int x1 = Tet[tet*4+1];
 		int x2 = Tet[tet*4+2];
@@ -242,7 +250,9 @@ public class FVM : MonoBehaviour
 			//TODO: Second PK Stress
 			Matrix4x4 S = Matrix4x4.zero;
 			S = Matrix_Add( Matrix_Float_Multiply(Green, 2 * stiffness_1), Matrix_Float_Multiply(Matrix4x4.identity, stiffness_0 * Matrix_Trace(Green)));
-    		//TODO: Elastic Force
+    		// first PK stress
+			Matrix4x4 P = F * S;
+			//TODO: Elastic Force
 			float volume = Mathf.Abs(Vector3.Dot(e1, Vector3.Cross(e2, e3))) / 6.0f;
 			Matrix4x4 vol_ref_FS = Matrix_Float_Multiply(F*S, volume);
 			Vector3 f1 = vol_ref_FS.MultiplyPoint3x4(e1);
